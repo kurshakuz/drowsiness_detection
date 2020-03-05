@@ -2,12 +2,15 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/videoio.hpp"
+#include "opencv2/face.hpp"
+
 #include <iostream>
 
 using namespace std;
 using namespace cv;
+using namespace cv::face;
 
-void detectAndDisplay( Mat frame );
+void detectFaceEyesAndDisplay( Mat frame );
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 
@@ -15,10 +18,10 @@ CascadeClassifier eyes_cascade;
 int main( int argc, const char** argv )
 {
 
-    String face_cascade_name = samples::findFile("/haarcascades/haarcascade_frontalface_alt.xml" );
+    String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
     //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_eye.xml");
 
-    String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_righteye_2splits.xml");
+    String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
     //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
 
     //-- 1. Load the cascades
@@ -33,7 +36,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("merey.mp4"); 
+    VideoCapture capture("../sample_videos/merey.mp4"); 
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -48,7 +51,7 @@ int main( int argc, const char** argv )
             break;
         }
         //-- 3. Apply the classifier to the frame
-        detectAndDisplay( frame );
+        detectFaceEyesAndDisplay( frame );
         if( waitKey(10) == 27 )
         {
             break; // escape
@@ -58,30 +61,55 @@ int main( int argc, const char** argv )
 }
 
 
-void detectAndDisplay( Mat frame )
+void detectFaceEyesAndDisplay( Mat frame )
 {
     Mat frame_gray;
     cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
     equalizeHist( frame_gray, frame_gray );
-    //-- Detect faces
+
     std::vector<Rect> faces;
     face_cascade.detectMultiScale( frame_gray, faces );
+
+    Mat faceROI = frame( faces[0] );
+    Mat eye;
 
     for ( size_t i = 0; i < faces.size(); i++ ) 
     {
         rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
 
         Mat faceROI_gray = frame_gray( faces[i] );
-        Mat faceROI = frame( faces[i] );
+        faceROI = frame( faces[i] );
 
         std::vector<Rect> eyes;
         eyes_cascade.detectMultiScale( faceROI_gray, eyes );
         for ( size_t j = 0; j < eyes.size(); j++ )
         {
-            rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x+eyes[j].width, eyes[j].y+eyes[j].height), Scalar(0, 255, 0), 2);
+            rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x + eyes[j].width, eyes[j].y + eyes[j].height), Scalar(0, 255, 0), 2);
+            eye = faceROI(eyes[0]);
+            cout <<  "Detected an eye" << std::endl ;
         }
 
+        // faceROI
+
     }
+
+    String facemark_filename = "../models/lbfmodel.yaml";
+
+    Ptr<Facemark> facemark = createFacemarkLBF();
+    facemark -> loadModel(facemark_filename);
+    cout << "Loaded facemark LBF model" << endl;
+
+    cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
+    vector<vector<Point2f> > shapes;
+    
+    if (facemark -> fit(frame, faces, shapes)) {
+        // Draw the detected landmarks
+        drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
+    }    
+
+    // cout <<  shapes[0] << std::endl ;
+
     //-- Show what you got
     imshow( "Capture - Face detection", frame );
+    // imshow( "Capture - Face detection", faceROI );
 }
