@@ -46,7 +46,7 @@ int main( int argc, const char** argv )
     //     return -1;
     // };
 
-    VideoCapture capture("../sample_videos/merey.mp4");
+    VideoCapture capture("../sample_videos/bauka.mp4");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -122,17 +122,10 @@ void isolate( Mat frame, vector<Point2f> landmarks)
     int npt[] = { 6 };
     const Point* ppt[1] = { region[0] };
     cv::fillPoly(mask, ppt, npt, 1, cv::Scalar(0, 0, 0), 0);
-
-
-    // cv::Mat eye;
-    // cv::bitwise_not(black_frame, eye, mask = mask);
-
     cv::bitwise_not(mask, mask);
 
-    Mat new_frame;
-    // imshow("Capture - Face detection", mask);
-    frame.copyTo(new_frame, mask);
-    imshow("Capture - Face detection", new_frame);
+    Mat frame_eye;
+    frame.copyTo(frame_eye, mask);
 
     int margin = 5;
     int x_vals[] = {region[0][0].x, region[0][1].x, region[0][2].x, region[0][3].x, region[0][4].x, region[0][5].x};
@@ -142,19 +135,19 @@ void isolate( Mat frame, vector<Point2f> landmarks)
     int min_y = *std::min_element(y_vals, y_vals+6) - margin;
     int max_y = *std::max_element(y_vals, y_vals+6) + margin;
 
-    Mat frame_new = new_frame(Range(min_y, max_y), Range(min_x, max_x));
+    Mat frame_eye_resized = frame_eye(Range(min_y, max_y), Range(min_x, max_x));
     Point origin = Point(min_x, min_y);
 
     // cout << frame.size() << std::endl;
 
-    Size new_size = frame_new.size();
+    Size new_size = frame_eye_resized.size();
     int new_height = new_size.height;
     int new_width = new_size.width;
     int center[] = {new_width / 2, new_height / 2};
 
     // cout << "frame = " << endl << " "  << frame << endl << endl;
 
-    imshow("Capture - Face detection", frame_new);
+    imshow("Capture - Face detection", frame_eye_resized);
 }
 
 void detectFaceEyesAndDisplay( Mat frame )
