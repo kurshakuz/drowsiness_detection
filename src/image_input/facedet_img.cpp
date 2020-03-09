@@ -47,6 +47,7 @@ int main( int argc, const char** argv )
 }
 
 void isolate( Mat frame, vector<Point2f> landmarks)
+
 {
     Point region[1][20];
 
@@ -149,6 +150,8 @@ void detectFaceEyesAndDisplay( Mat frame )
     cout <<  shapes[0].size() << std::endl ;
 
     // cout <<  shapes[0][0].x << std::endl ;
+
+    cout <<  shapes[0].size() << std::endl ;
 
     isolate(frame, shapes[0]);
 
