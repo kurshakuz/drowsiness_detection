@@ -30,16 +30,14 @@ int main( int argc, const char** argv )
     facemark -> loadModel(facemark_filename);
     cout << "Loaded facemark LBF model" << endl;
 
-    // String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
-    //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
-
-    //-- 1. Load the cascades
     if( !face_cascade.load( face_cascade_name ) )
     {
         cout << "--(!)Error loading face cascade\n";
         return -1;
     };
 
+    // String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
+    // String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
     // if( !eyes_cascade.load( eyes_cascade_name ) )
     // {
     //     cout << "--(!)Error loading eyes cascade\n";
@@ -52,6 +50,7 @@ int main( int argc, const char** argv )
         cout << "--(!)Error opening video capture\n";
         return -1;
     }
+
     Mat frame;
     while ( capture.read(frame) )
     {
@@ -170,7 +169,6 @@ void detectFaceEyesAndDisplay( Mat frame )
         faceROI = frame( faces[i] );
 
         // Show eye
-
         // std::vector<Rect> eyes;
         // eyes_cascade.detectMultiScale( faceROI_gray, eyes );
         // for ( size_t j = 0; j < eyes.size(); j++ )
@@ -188,15 +186,9 @@ void detectFaceEyesAndDisplay( Mat frame )
     vector<vector<Point2f> > shapes;
 
     if (facemark -> fit(frame, faces, shapes)) {
+        // facemarks visualization
         // drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
 
     }
-
-    //  cout <<  shapes[0] << std::endl ;
-
-    //-- Show what you got
-    // imshow( "Capture - Face detection", frame );
-    //imshow( "Capture - Face detection", faceROI );
-
     isolate(frame, shapes[0]);
 }
