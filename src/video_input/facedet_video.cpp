@@ -3,6 +3,9 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/videoio.hpp"
 #include "opencv2/face.hpp"
+#include <opencv2/core/mat.hpp>
+#include <stdio.h>
+#include <math.h>
 
 #include <iostream>
 
@@ -11,6 +14,7 @@ using namespace cv;
 using namespace cv::face;
 
 void detectFaceEyesAndDisplay( Mat frame );
+Point middlePoint(Point p1, Point p2);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 
@@ -36,7 +40,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../sample_videos/merey.mp4"); 
+    VideoCapture capture("../sample_videos/merey.mp4");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -60,6 +64,89 @@ int main( int argc, const char** argv )
     return 0;
 }
 
+Point middlePoint(Point p1, Point p2) {
+
+    float x = (float)((p1.x + p2.x) / 2);
+    float y = (float)((p1.y + p2.y) / 2);
+    Point p = Point(x, y);
+    return p;
+}
+
+int blinkingRatio (vector<Point2f> landmarks) {
+    
+    int points[6] = {36, 37, 38, 39, 40, 41};
+    
+    Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
+    Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
+    Point top = middlePoint(landmarks[points[1]], landmarks[points[2]]);
+    Point bottom = middlePoint(landmarks[points[5]], landmarks[points[4]]);
+
+    int eye_width = hypot((left.x - right.x), (left.y - right.y));
+    int eye_height = hypot((top.x - bottom.x), (top.y - bottom.y));
+    int ratio = (int) eye_width / eye_height;
+    
+    try {
+        int ratio = (int) eye_width / eye_height;
+    } catch (exception& e) {
+        ratio = 0;
+    }
+
+    return ratio;
+}
+
+void isolate( Mat frame, vector<Point2f> landmarks)
+{
+    Point region[1][20];
+
+    int points[6] = {36, 37, 38, 39, 40, 41}; // left eye
+    for (int i = 0; i < 6; i++) {
+        // cout << landmarks[points[i]].x << std::endl ;
+        region[0][i] = Point(landmarks[points[i]].x, landmarks[points[i]].y);
+    }
+
+    Size size = frame.size();
+    int height = size.height;
+    int width = size.width;
+
+    cv::Mat black_frame = cv::Mat(height, width, CV_8UC1, Scalar::all(0));
+    cv::Mat mask = cv::Mat(height, width, CV_8UC1, Scalar::all(255));
+
+    int npt[] = { 6 };
+    const Point* ppt[1] = { region[0] };
+    cv::fillPoly(mask, ppt, npt, 1, cv::Scalar(0, 0, 0), 8);
+
+    // cv::Mat eye = frame.clone();
+    // cv::bitwise_not(black_frame, eye, mask = mask);
+
+
+    cv::Mat eye;
+    cv::bitwise_not(black_frame, eye, mask = mask);
+
+    int margin = 5;
+    int x_vals[] = {region[0][0].x, region[0][1].x, region[0][2].x, region[0][3].x, region[0][4].x, region[0][5].x};
+    int y_vals[] = {region[0][0].y, region[0][1].y, region[0][2].y, region[0][3].y, region[0][4].y, region[0][5].y};
+    int min_x = *std::min_element(x_vals, x_vals+6) - margin;
+    int max_x = *std::max_element(x_vals, x_vals+6) + margin;
+    int min_y = *std::min_element(y_vals, y_vals+6) - margin;
+    int max_y = *std::max_element(y_vals, y_vals+6) + margin;
+
+    cout << min_y << std::endl;
+    cout << max_y << std::endl;
+
+    frame = eye(Range(min_y, max_y), Range(min_x, max_x));
+    Point origin = Point(min_x, min_y);
+
+    cout << frame.size() << std::endl;
+
+    Size new_size = frame.size();
+    int new_height = new_size.height;
+    int new_width = new_size.width;
+    int center[] = {new_width / 2, new_height / 2};
+
+    // cout << "frame = " << endl << " "  << frame << endl << endl;
+
+    imshow("Capture - Face detection", frame);
+}
 
 void detectFaceEyesAndDisplay( Mat frame )
 {
@@ -73,7 +160,7 @@ void detectFaceEyesAndDisplay( Mat frame )
     Mat faceROI = frame( faces[0] );
     Mat eye;
 
-    for ( size_t i = 0; i < faces.size(); i++ ) 
+    for ( size_t i = 0; i < faces.size(); i++ )
     {
         rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
 
@@ -92,7 +179,7 @@ void detectFaceEyesAndDisplay( Mat frame )
         // faceROI
 
     }
-
+//
     String facemark_filename = "../models/lbfmodel.yaml";
 
     Ptr<Facemark> facemark = createFacemarkLBF();
@@ -101,15 +188,15 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
     vector<vector<Point2f> > shapes;
-    
+
     if (facemark -> fit(frame, faces, shapes)) {
         // Draw the detected landmarks
         drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
-    }    
+    }
 
-    // cout <<  shapes[0] << std::endl ;
+     cout <<  shapes[0] << std::endl ;
 
     //-- Show what you got
     imshow( "Capture - Face detection", frame );
-    // imshow( "Capture - Face detection", faceROI );
+    //imshow( "Capture - Face detection", faceROI );
 }
