@@ -17,7 +17,7 @@ void detectFaceEyesAndDisplay( Mat frame );
 Point middlePoint(Point p1, Point p2);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
-
+Ptr<Facemark> facemark;
 
 int main( int argc, const char** argv )
 {
@@ -25,7 +25,12 @@ int main( int argc, const char** argv )
     String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
     //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_eye.xml");
 
-    String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
+    String facemark_filename = "../models/lbfmodel.yaml";
+    facemark = createFacemarkLBF();
+    facemark -> loadModel(facemark_filename);
+    cout << "Loaded facemark LBF model" << endl;
+
+    // String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
     //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
 
     //-- 1. Load the cascades
@@ -34,11 +39,12 @@ int main( int argc, const char** argv )
         cout << "--(!)Error loading face cascade\n";
         return -1;
     };
-    if( !eyes_cascade.load( eyes_cascade_name ) )
-    {
-        cout << "--(!)Error loading eyes cascade\n";
-        return -1;
-    };
+
+    // if( !eyes_cascade.load( eyes_cascade_name ) )
+    // {
+    //     cout << "--(!)Error loading eyes cascade\n";
+    //     return -1;
+    // };
 
     VideoCapture capture("../sample_videos/merey.mp4");
     if ( ! capture.isOpened() )
@@ -54,8 +60,11 @@ int main( int argc, const char** argv )
             cout << "--(!) No captured frame -- Break!\n";
             break;
         }
-        //-- 3. Apply the classifier to the frame
+
+        // cout << "Started detecting landmarks" << endl;
         detectFaceEyesAndDisplay( frame );
+        // imshow( "Capture - Face detection", frame );
+
         if( waitKey(10) == 27 )
         {
             break; // escape
@@ -65,7 +74,6 @@ int main( int argc, const char** argv )
 }
 
 Point middlePoint(Point p1, Point p2) {
-
     float x = (float)((p1.x + p2.x) / 2);
     float y = (float)((p1.y + p2.y) / 2);
     Point p = Point(x, y);
@@ -158,7 +166,7 @@ void detectFaceEyesAndDisplay( Mat frame )
     face_cascade.detectMultiScale( frame_gray, faces );
 
     Mat faceROI = frame( faces[0] );
-    Mat eye;
+    // Mat eye;
 
     for ( size_t i = 0; i < faces.size(); i++ )
     {
@@ -167,34 +175,29 @@ void detectFaceEyesAndDisplay( Mat frame )
         Mat faceROI_gray = frame_gray( faces[i] );
         faceROI = frame( faces[i] );
 
-        std::vector<Rect> eyes;
-        eyes_cascade.detectMultiScale( faceROI_gray, eyes );
-        for ( size_t j = 0; j < eyes.size(); j++ )
-        {
-            rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x + eyes[j].width, eyes[j].y + eyes[j].height), Scalar(0, 255, 0), 2);
-            eye = faceROI(eyes[0]);
-            cout <<  "Detected an eye" << std::endl ;
-        }
+        // Show eye
+
+        // std::vector<Rect> eyes;
+        // eyes_cascade.detectMultiScale( faceROI_gray, eyes );
+        // for ( size_t j = 0; j < eyes.size(); j++ )
+        // {
+        //     rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x + eyes[j].width, eyes[j].y + eyes[j].height), Scalar(0, 255, 0), 2);
+        //     eye = faceROI(eyes[0]);
+        //     cout <<  "Detected an eye" << std::endl ;
+        // }
 
         // faceROI
 
     }
-//
-    String facemark_filename = "../models/lbfmodel.yaml";
-
-    Ptr<Facemark> facemark = createFacemarkLBF();
-    facemark -> loadModel(facemark_filename);
-    cout << "Loaded facemark LBF model" << endl;
 
     cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
     vector<vector<Point2f> > shapes;
 
     if (facemark -> fit(frame, faces, shapes)) {
-        // Draw the detected landmarks
         drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
     }
 
-     cout <<  shapes[0] << std::endl ;
+    //  cout <<  shapes[0] << std::endl ;
 
     //-- Show what you got
     imshow( "Capture - Face detection", frame );
