@@ -48,7 +48,7 @@ int main( int argc, const char** argv )
     //     return -1;
     // };
 
-    VideoCapture capture("../sample_videos/bauka.mp4");
+    VideoCapture capture("../sample_videos/china2.mp4");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
