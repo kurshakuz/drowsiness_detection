@@ -15,9 +15,13 @@ using namespace cv::face;
 
 void detectFaceEyesAndDisplay( Mat frame );
 Point middlePoint(Point p1, Point p2);
+float blinkingRatio (vector<Point2f> landmarks, int points[]);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Ptr<Facemark> facemark;
+
+int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
+int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
 
 int main( int argc, const char** argv )
 {
@@ -60,9 +64,7 @@ int main( int argc, const char** argv )
             break;
         }
 
-        // cout << "Started detecting landmarks" << endl;
         detectFaceEyesAndDisplay( frame );
-        // imshow( "Capture - Face detection", frame );
 
         if( waitKey(10) == 27 )
         {
@@ -79,33 +81,31 @@ Point middlePoint(Point p1, Point p2) {
     return p;
 }
 
-int blinkingRatio (vector<Point2f> landmarks) {
-    
-    int points[6] = {36, 37, 38, 39, 40, 41};
-    
+float blinkingRatio (vector<Point2f> landmarks, int points[]) 
+{
+
     Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
     Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
     Point top = middlePoint(landmarks[points[1]], landmarks[points[2]]);
     Point bottom = middlePoint(landmarks[points[5]], landmarks[points[4]]);
 
-    int eye_width = hypot((left.x - right.x), (left.y - right.y));
-    int eye_height = hypot((top.x - bottom.x), (top.y - bottom.y));
-    int ratio = (int) eye_width / eye_height;
+    float eye_width = hypot((left.x - right.x), (left.y - right.y));
+    float eye_height = hypot((top.x - bottom.x), (top.y - bottom.y));
+    float ratio = eye_width / eye_height;
     
     try {
-        int ratio = (int) eye_width / eye_height;
+        float ratio = eye_width / eye_height;
     } catch (exception& e) {
-        ratio = 0;
+        ratio = 0.0;
     }
 
     return ratio;
 }
 
-void isolate( Mat frame, vector<Point2f> landmarks)
+void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
 
-    int points[6] = {36, 37, 38, 39, 40, 41}; // left eye
     for (int i = 0; i < 6; i++) {
         // cout << landmarks[points[i]].x << std::endl ;
         region[0][i] = Point(landmarks[points[i]].x, landmarks[points[i]].y);
@@ -188,7 +188,24 @@ void detectFaceEyesAndDisplay( Mat frame )
     if (facemark -> fit(frame, faces, shapes)) {
         // facemarks visualization
         // drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
-
     }
-    isolate(frame, shapes[0]);
+
+    isolate(frame, shapes[0], LEFT_EYE_POINTS );
+    // isolate(frame, shapes[0], RIGHT_EYE_POINTS );
+    float blinking_ratio_left = blinkingRatio( shapes[0], LEFT_EYE_POINTS );
+    float blinking_ratio_right = blinkingRatio( shapes[0], RIGHT_EYE_POINTS );
+
+    float isBlinking = (blinking_ratio_left + blinking_ratio_right) /2;
+
+    if (isBlinking > 5) 
+    {
+        cout << "BLINKING!" << endl;
+    }
+    else 
+    {
+        cout << "not blinking" << endl;
+    }
+
+    // cout << "Left: " << (blinking_ratio_left) << endl;    
+    // cout << "Right: " << (blinking_ratio_right) << endl;    
 }
