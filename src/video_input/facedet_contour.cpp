@@ -16,6 +16,7 @@ using namespace cv::face;
 void detectFaceEyesAndDisplay( Mat frame );
 Point middlePoint(Point p1, Point p2);
 float blinkingRatio (vector<Point2f> landmarks, int points[]);
+float iris_size(Mat frame);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Ptr<Facemark> facemark;
@@ -102,6 +103,23 @@ float blinkingRatio (vector<Point2f> landmarks, int points[])
     return ratio;
 }
 
+
+float iris_size(Mat frame) 
+{
+    Size size = frame.size();
+    int height = size.height;
+    int width = size.width;
+
+    Mat frame_resized = frame(Range(5, height-5), Range(5, width-5));
+    int height_resized = height-10;
+    int width_resized = width-10;
+
+    float n_pixels = height_resized * width_resized;
+    float n_blacks = n_pixels - cv::countNonZero(frame_resized);
+
+    return (n_blacks / n_pixels);
+}
+
 void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
@@ -162,10 +180,13 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
     cv::threshold(frame_eye_binary, frame_eye_binary, 40.0, 255.0, THRESH_BINARY);
 
-    imshow("Capture - Default", frame_eye_resized);
-    imshow("Capture - Bilateral", frame_eye_contours);
-    imshow("Capture - Eroded", frame_eye_eroded);
-    imshow("Capture - Binary", frame_eye_binary);
+    // imshow("Capture - Default", frame_eye_resized);
+    // imshow("Capture - Bilateral", frame_eye_contours);
+    // imshow("Capture - Eroded", frame_eye_eroded);
+    // imshow("Capture - Binary", frame_eye_binary);
+
+    float result = iris_size(frame_eye_binary);
+    cout << result << std::endl;
 }
 
 void detectFaceEyesAndDisplay( Mat frame )
