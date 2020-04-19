@@ -219,19 +219,22 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_contours;
     cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
 
-    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
-    Mat frame_eye_eroded;
-    cv::erode(frame_eye_contours, frame_eye_eroded, kernel);
-
     Mat frame_eye_binary;
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
     cv::threshold(frame_eye_binary, frame_eye_binary, 60.0, 255.0, THRESH_BINARY);
 
+   Mat kernel(3,3, CV_8UC1, Scalar::all(255));
+    // Mat kernel = (Mat_<double>(3,3) << 255, 255, 255, 255, 255, 255, 255, 255, 255);
+    Mat frame_eye_dilated;
+    cv::dilate(frame_eye_binary, frame_eye_dilated, kernel);
+
+    Mat frame_eye_closing;
+    cv::erode(frame_eye_dilated, frame_eye_closing, kernel);
+
     // imshow("Capture - Default", frame_eye_resized);
     // imshow("Capture - Bilateral", frame_eye_contours);
-    // imshow("Capture - Eroded", frame_eye_eroded);
-    imshow("Capture - Binary", frame_eye_binary);
-
+    imshow("Capture - Dilated", frame_eye_dilated);
+    imshow("Capture - Closing", frame_eye_closing);
 
 }
 
