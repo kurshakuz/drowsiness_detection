@@ -17,6 +17,9 @@ void detectFaceEyesAndDisplay( Mat frame );
 Point middlePoint(Point p1, Point p2);
 float blinkingRatio (vector<Point2f> landmarks, int points[]);
 float iris_size(Mat frame);
+Mat eye_processing(Mat frame_eye_resized, float threshold);
+float find_best_threshold(Mat eye_frame);
+
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Ptr<Facemark> facemark;
@@ -120,6 +123,51 @@ float iris_size(Mat frame)
     return (n_blacks / n_pixels);
 }
 
+float find_best_threshold(Mat eye_frame) 
+{
+    map <int, float> trials;
+    float average_iris_size = 0.45;
+    for (int i = 5; i < 100; i = i+5) 
+    {
+        Mat frame_eye_binary = eye_processing(eye_frame, i); // applying different thresholds
+        float iris_result = iris_size(frame_eye_binary);
+        trials.insert ( pair <int, float>(i, iris_result) );
+        
+    }
+
+    float closest_distance = 100;
+    float closest_threshold;
+    for (auto it = trials.begin(); it != trials.end(); ++it)
+    {
+        float distance = abs(average_iris_size - (*it).second);
+        if (distance <= closest_distance) 
+        {
+            closest_threshold = (*it).first;
+        }
+    }
+
+    return closest_threshold;
+}
+
+
+Mat eye_processing(Mat frame_eye_resized, float threshold)
+{
+    Mat frame_eye_contours;
+    cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
+
+    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
+    Mat frame_eye_eroded;
+    cv::erode(frame_eye_contours, frame_eye_eroded, kernel);
+
+
+    Mat frame_eye_binary;
+    cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
+    cv::threshold(frame_eye_binary, frame_eye_binary, threshold, 255.0, THRESH_BINARY);
+
+    return frame_eye_binary;
+}
+
+
 void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
@@ -175,18 +223,16 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_eroded;
     cv::erode(frame_eye_contours, frame_eye_eroded, kernel);
 
-
     Mat frame_eye_binary;
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
-    cv::threshold(frame_eye_binary, frame_eye_binary, 40.0, 255.0, THRESH_BINARY);
+    cv::threshold(frame_eye_binary, frame_eye_binary, 60.0, 255.0, THRESH_BINARY);
 
     // imshow("Capture - Default", frame_eye_resized);
     // imshow("Capture - Bilateral", frame_eye_contours);
     // imshow("Capture - Eroded", frame_eye_eroded);
-    // imshow("Capture - Binary", frame_eye_binary);
+    imshow("Capture - Binary", frame_eye_binary);
 
-    float result = iris_size(frame_eye_binary);
-    cout << result << std::endl;
+
 }
 
 void detectFaceEyesAndDisplay( Mat frame )
