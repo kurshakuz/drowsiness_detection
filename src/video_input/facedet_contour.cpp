@@ -141,6 +141,10 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_resized = frame_eye(Range(min_y, max_y), Range(min_x, max_x));
     Point origin = Point(min_x, min_y);
 
+    Mat inv_mask;
+    inRange(frame_eye_resized, Scalar(0, 0, 0), Scalar(0, 0, 0), inv_mask);
+    frame_eye_resized.setTo(Scalar(255, 255, 255), inv_mask);
+
     // cout << frame.size() << std::endl;
 
   
@@ -151,13 +155,13 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_contours;
     cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
 
-    Mat kernel(3,3, CV_8UC1, Scalar::all(0));
+    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
     Mat frame_eye_eroded;
     cv::erode(frame_eye_contours, frame_eye_eroded, kernel);
 
 
     Mat frame_eye_binary;
-    cvtColor( frame_eye_eroded, frame_eye_binary, COLOR_BGR2GRAY );
+    cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
     cv::threshold(frame_eye_binary, frame_eye_binary, 80.0, 255.0, THRESH_BINARY);
 
     imshow("Capture - Default", frame_eye_resized);
