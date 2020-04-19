@@ -147,8 +147,6 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 
     // cout << frame.size() << std::endl;
 
-  
-
     // cout << "frame = " << endl << " "  << frame << endl << endl;
 
     //// Contouring eye region
@@ -162,7 +160,7 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 
     Mat frame_eye_binary;
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
-    cv::threshold(frame_eye_binary, frame_eye_binary, 80.0, 255.0, THRESH_BINARY);
+    cv::threshold(frame_eye_binary, frame_eye_binary, 40.0, 255.0, THRESH_BINARY);
 
     imshow("Capture - Default", frame_eye_resized);
     imshow("Capture - Bilateral", frame_eye_contours);
