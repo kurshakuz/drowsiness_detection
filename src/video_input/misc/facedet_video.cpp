@@ -13,23 +13,25 @@ using namespace std;
 using namespace cv;
 using namespace cv::face;
 
-void detectFaceEyesAndDisplay( Mat frame );
+bool isBlinking( Mat frame );
+bool isYawning( Mat frame );
 Point middlePoint(Point p1, Point p2);
 float blinkingRatio (vector<Point2f> landmarks, int points[]);
+float yawningRatio (vector<Point2f> landmarks, int points[]);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Ptr<Facemark> facemark;
 
 int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
 int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
+int MOUTH[2] = {62, 66};
 
 int main( int argc, const char** argv )
 {
 
-    String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
-    //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_eye.xml");
+    String face_cascade_name = samples::findFile("../../haarcascades/haarcascade_frontalface_alt.xml" );
 
-    String facemark_filename = "../models/lbfmodel.yaml";
+    String facemark_filename = "../../models/lbfmodel.yaml";
     facemark = createFacemarkLBF();
     facemark -> loadModel(facemark_filename);
     cout << "Loaded facemark LBF model" << endl;
@@ -40,15 +42,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    // String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
-    // String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
-    // if( !eyes_cascade.load( eyes_cascade_name ) )
-    // {
-    //     cout << "--(!)Error loading eyes cascade\n";
-    //     return -1;
-    // };
-
-    VideoCapture capture("../sample_videos/driver_day.mp4");
+    VideoCapture capture("../../sample_videos/driver_day.mp4");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -56,15 +50,44 @@ int main( int argc, const char** argv )
     }
 
     Mat frame;
+    int frame_counter = 0;
+    int blink_counter = 0;
+
     while ( capture.read(frame) )
     {
         if( frame.empty() )
         {
             cout << "--(!) No captured frame -- Break!\n";
             break;
+        };
+
+        bool is_blinking = isBlinking( frame );
+        bool is_yawning = isYawning( frame);
+
+        frame_counter++;
+        if (is_blinking)
+        {
+            blink_counter++;
+        };
+        
+        if (is_yawning)
+        {
+            cout << "Driver is yawning" << endl;
+        };
+
+        if (frame_counter == 20)
+        {
+            float drowsiness_perc = (float)blink_counter / frame_counter;
+            frame_counter = 0;
+            blink_counter = 0;
+            cout << "Drowsiness percentage: " << (drowsiness_perc) << endl;
+            
+            if (drowsiness_perc > 0.8)
+            {
+                cout << "ALERT! The driver is sleepy!" << endl;
+            }
         }
 
-        detectFaceEyesAndDisplay( frame );
 
         if( waitKey(10) == 27 )
         {
@@ -81,9 +104,8 @@ Point middlePoint(Point p1, Point p2) {
     return p;
 }
 
-float blinkingRatio (vector<Point2f> landmarks, int points[]) 
+float blinkingRatio (vector<Point2f> landmarks, int points[])
 {
-
     Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
     Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
     Point top = middlePoint(landmarks[points[1]], landmarks[points[2]]);
@@ -102,12 +124,25 @@ float blinkingRatio (vector<Point2f> landmarks, int points[])
     return ratio;
 }
 
+float yawningRatio (vector<Point2f> landmarks, int points[])
+{
+    Point top = landmarks[points[1]];
+    Point bottom = landmarks[points[2]];
+    float mouth_height = top.y - bottom.y;
+
+    try {
+        float mouth_height = top.y - bottom.y;
+    } catch (exception& e) {
+        mouth_height = 0.0;
+    }
+    return mouth_height;
+}
+
 void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
 
     for (int i = 0; i < 6; i++) {
-        // cout << landmarks[points[i]].x << std::endl ;
         region[0][i] = Point(landmarks[points[i]].x, landmarks[points[i]].y);
     }
 
@@ -137,19 +172,15 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_resized = frame_eye(Range(min_y, max_y), Range(min_x, max_x));
     Point origin = Point(min_x, min_y);
 
-    // cout << frame.size() << std::endl;
-
     Size new_size = frame_eye_resized.size();
     int new_height = new_size.height;
     int new_width = new_size.width;
     int center[] = {new_width / 2, new_height / 2};
 
-    // cout << "frame = " << endl << " "  << frame << endl << endl;
-
-    imshow("Capture - Face detection", frame_eye_resized);
+    imshow("Capture - Face detection", frame);
 }
 
-void detectFaceEyesAndDisplay( Mat frame )
+bool isBlinking( Mat frame )
 {
     Mat frame_gray;
     cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
@@ -159,7 +190,6 @@ void detectFaceEyesAndDisplay( Mat frame )
     face_cascade.detectMultiScale( frame_gray, faces );
 
     Mat faceROI = frame( faces[0] );
-    // Mat eye;
 
     for ( size_t i = 0; i < faces.size(); i++ )
     {
@@ -167,45 +197,66 @@ void detectFaceEyesAndDisplay( Mat frame )
 
         Mat faceROI_gray = frame_gray( faces[i] );
         faceROI = frame( faces[i] );
-
-        // Show eye
-        // std::vector<Rect> eyes;
-        // eyes_cascade.detectMultiScale( faceROI_gray, eyes );
-        // for ( size_t j = 0; j < eyes.size(); j++ )
-        // {
-        //     rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x + eyes[j].width, eyes[j].y + eyes[j].height), Scalar(0, 255, 0), 2);
-        //     eye = faceROI(eyes[0]);
-        //     cout <<  "Detected an eye" << std::endl ;
-        // }
-
-        // faceROI
-
     }
 
     cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
     vector<vector<Point2f> > shapes;
 
-    if (facemark -> fit(frame, faces, shapes)) {
-        // facemarks visualization
-        // drawFacemarks(frame, shapes[0], cv::Scalar(0, 0, 255));
-    }
+    facemark -> fit(frame, faces, shapes);
 
-    isolate(frame, shapes[0], LEFT_EYE_POINTS );
+    // isolate(frame, shapes[0], LEFT_EYE_POINTS );
     // isolate(frame, shapes[0], RIGHT_EYE_POINTS );
     float blinking_ratio_left = blinkingRatio( shapes[0], LEFT_EYE_POINTS );
     float blinking_ratio_right = blinkingRatio( shapes[0], RIGHT_EYE_POINTS );
+    //float yawning_ratio = yawningRatio( shapes[0], MOUTH );
 
-    float isBlinking = (blinking_ratio_left + blinking_ratio_right) /2;
+    float avg_blinking_ratio = (blinking_ratio_left + blinking_ratio_right) /2;
 
-    if (isBlinking > 5) 
+    if (avg_blinking_ratio > 5)
     {
-        cout << "BLINKING!" << endl;
+        // cout << "BLINKING!" << endl;
+        return 1;
     }
-    else 
+    else
     {
-        cout << "not blinking" << endl;
+        // cout << "not blinking" << endl;
+        return 0;
     }
-
-    // cout << "Left: " << (blinking_ratio_left) << endl;    
-    // cout << "Right: " << (blinking_ratio_right) << endl;    
 }
+    
+bool isYawning( Mat frame )
+    {
+        Mat frame_gray;
+        cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
+        equalizeHist( frame_gray, frame_gray );
+
+        std::vector<Rect> faces;
+        face_cascade.detectMultiScale( frame_gray, faces );
+
+        Mat faceROI = frame( faces[0] );
+
+        for ( size_t i = 0; i < faces.size(); i++ )
+        {
+            rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
+
+            Mat faceROI_gray = frame_gray( faces[i] );
+            faceROI = frame( faces[i] );
+        }
+
+        cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
+        vector<vector<Point2f> > shapes;
+
+        facemark -> fit(frame, faces, shapes);
+        
+        float yawning_ratio = yawningRatio( shapes[0], MOUTH );
+
+        if (yawning_ratio > 8)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
