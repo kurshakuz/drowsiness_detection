@@ -127,12 +127,12 @@ float find_best_threshold(Mat eye_frame)
 {
     map <int, float> trials;
     float average_iris_size = 0.45;
+
     for (int i = 5; i < 100; i = i+5) 
     {
         Mat frame_eye_binary = eye_processing(eye_frame, i); // applying different thresholds
         float iris_result = iris_size(frame_eye_binary);
         trials.insert ( pair <int, float>(i, iris_result) );
-        
     }
 
     float closest_distance = 100;
@@ -140,35 +140,47 @@ float find_best_threshold(Mat eye_frame)
     for (auto it = trials.begin(); it != trials.end(); ++it)
     {
         float distance = abs(average_iris_size - (*it).second);
+
+        // cout << (*it).first << " " << (*it).second << endl;
+        // cout << distance << endl;
         if (distance <= closest_distance) 
         {
+            closest_distance = distance;
             closest_threshold = (*it).first;
         }
     }
-
+    // cout << closest_threshold << endl;
+    
     return closest_threshold;
 }
 
 
 Mat eye_processing(Mat frame_eye_resized, float threshold)
 {
+    Mat inv_mask;
+    inRange(frame_eye_resized, Scalar(0, 0, 0), Scalar(0, 0, 0), inv_mask);
+    frame_eye_resized.setTo(Scalar(255, 255, 255), inv_mask);
+
+    //// Contouring eye region
     Mat frame_eye_contours;
     cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
-
-    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
-    Mat frame_eye_eroded;
-    cv::erode(frame_eye_contours, frame_eye_eroded, kernel);
-
 
     Mat frame_eye_binary;
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
     cv::threshold(frame_eye_binary, frame_eye_binary, threshold, 255.0, THRESH_BINARY);
 
-    return frame_eye_binary;
+    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
+    Mat frame_eye_dilated;
+    cv::dilate(frame_eye_binary, frame_eye_dilated, kernel);
+
+    Mat frame_eye_closing;
+    cv::erode(frame_eye_dilated, frame_eye_closing, kernel);
+
+    return frame_eye_closing;
 }
 
 
-void isolate( Mat frame, vector<Point2f> landmarks, int points[])
+Mat isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
 
@@ -207,34 +219,36 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[])
     Mat frame_eye_resized = frame_eye(Range(min_y, max_y), Range(min_x, max_x));
     Point origin = Point(min_x, min_y);
 
-    Mat inv_mask;
-    inRange(frame_eye_resized, Scalar(0, 0, 0), Scalar(0, 0, 0), inv_mask);
-    frame_eye_resized.setTo(Scalar(255, 255, 255), inv_mask);
+    return frame_eye_resized;
 
-    // cout << frame.size() << std::endl;
+    // Mat inv_mask;
+    // inRange(frame_eye_resized, Scalar(0, 0, 0), Scalar(0, 0, 0), inv_mask);
+    // frame_eye_resized.setTo(Scalar(255, 255, 255), inv_mask);
 
-    // cout << "frame = " << endl << " "  << frame << endl << endl;
+    // // cout << frame.size() << std::endl;
 
-    //// Contouring eye region
-    Mat frame_eye_contours;
-    cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
+    // // cout << "frame = " << endl << " "  << frame << endl << endl;
 
-    Mat frame_eye_binary;
-    cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
-    cv::threshold(frame_eye_binary, frame_eye_binary, 60.0, 255.0, THRESH_BINARY);
+    // //// Contouring eye region
+    // Mat frame_eye_contours;
+    // cv::bilateralFilter(frame_eye_resized, frame_eye_contours, 10, 20, 5);
 
-   Mat kernel(3,3, CV_8UC1, Scalar::all(255));
-    // Mat kernel = (Mat_<double>(3,3) << 255, 255, 255, 255, 255, 255, 255, 255, 255);
-    Mat frame_eye_dilated;
-    cv::dilate(frame_eye_binary, frame_eye_dilated, kernel);
+    // Mat frame_eye_binary;
+    // cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
+    // cv::threshold(frame_eye_binary, frame_eye_binary, 60.0, 255.0, THRESH_BINARY);
 
-    Mat frame_eye_closing;
-    cv::erode(frame_eye_dilated, frame_eye_closing, kernel);
+    // Mat kernel(3,3, CV_8UC1, Scalar::all(255));
+    // // Mat kernel = (Mat_<double>(3,3) << 255, 255, 255, 255, 255, 255, 255, 255, 255);
+    // Mat frame_eye_dilated;
+    // cv::dilate(frame_eye_binary, frame_eye_dilated, kernel);
+
+    // Mat frame_eye_closing;
+    // cv::erode(frame_eye_dilated, frame_eye_closing, kernel);
 
     // imshow("Capture - Default", frame_eye_resized);
-    // imshow("Capture - Bilateral", frame_eye_contours);
-    imshow("Capture - Dilated", frame_eye_dilated);
-    imshow("Capture - Closing", frame_eye_closing);
+    // // imshow("Capture - Bilateral", frame_eye_contours);
+    // // imshow("Capture - Dilated", frame_eye_dilated);
+    // // imshow("Capture - Closing", frame_eye_closing);
 
 }
 
@@ -280,7 +294,10 @@ void detectFaceEyesAndDisplay( Mat frame )
     }
 
 
-    isolate(frame, shapes[0], LEFT_EYE_POINTS );
+    Mat eye_frame = isolate(frame, shapes[0], LEFT_EYE_POINTS );
+    float threshold = find_best_threshold(eye_frame);
+    // cout << threshold<< std::endl;
+
     // isolate(frame, shapes[0], RIGHT_EYE_POINTS );
     // float blinking_ratio_left = blinkingRatio( shapes[0], LEFT_EYE_POINTS );
     // float blinking_ratio_right = blinkingRatio( shapes[0], RIGHT_EYE_POINTS );
