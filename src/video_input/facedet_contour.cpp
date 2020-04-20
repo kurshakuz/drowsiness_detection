@@ -28,7 +28,8 @@ Point middlePoint(Point p1, Point p2)
     return p;
 }
 
-float blinkingRatio (vector<Point2f> landmarks, int points[]) 
+// Drowsiness estimation based on landmarks
+float blinkingRatio(vector<Point2f> landmarks, int points[]) 
 {
     Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
     Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
@@ -48,7 +49,7 @@ float blinkingRatio (vector<Point2f> landmarks, int points[])
     return ratio;
 }
 
-
+// Drowsiness estimation based on morph. operations and iris extraction
 float iris_size(Mat frame) 
 {
     Size size = frame.size();
@@ -65,6 +66,7 @@ float iris_size(Mat frame)
     return (n_blacks / n_pixels);
 }
 
+// Morphological operations used for iris extraction
 Mat eye_processing(Mat frame_eye_resized, float threshold)
 {
     Mat inv_mask;
@@ -89,7 +91,7 @@ Mat eye_processing(Mat frame_eye_resized, float threshold)
     return frame_eye_closing;
 }
 
-
+// calibration of threshold values used in binarization
 float find_best_threshold(Mat eye_frame) 
 {
     map <int, float> trials;
@@ -118,6 +120,7 @@ float find_best_threshold(Mat eye_frame)
     return closest_threshold;
 }
 
+// extraction of eye polygon from the image
 Mat isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
     Point region[1][20];
@@ -157,6 +160,7 @@ Mat isolate( Mat frame, vector<Point2f> landmarks, int points[])
     return frame_eye_resized;
 }
 
+// detects eyes and displays
 void detectFaceEyesAndDisplay( Mat frame )
 {
     Mat frame_gray;
@@ -227,8 +231,6 @@ int main( int argc, const char** argv )
 {
 
     String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
-    //String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_eye.xml");
-
     String facemark_filename = "../models/lbfmodel.yaml";
     facemark = createFacemarkLBF();
     facemark -> loadModel(facemark_filename);
@@ -240,15 +242,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    // String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
-    // String eyes_cascade_name = samples::findFile("/haarcascades/haarcascade_lefteye_2splits.xml");
-    // if( !eyes_cascade.load( eyes_cascade_name ) )
-    // {
-    //     cout << "--(!)Error loading eyes cascade\n";
-    //     return -1;
-    // };
-
-    VideoCapture capture("../sample_videos/china2.mp4");
+    VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -264,7 +258,7 @@ int main( int argc, const char** argv )
             break;
         }
 
-        detectFaceEyesAndDisplay( frame );
+        detectFaceEyesAndDisplay( frame ); // main logic execution
 
         if( waitKey(10) == 27 )
         {
