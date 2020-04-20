@@ -14,7 +14,7 @@ using namespace cv;
 using namespace cv::face;
 
 bool isBlinking( Mat frame );
-bool isYawning( Mat frame );
+//bool isYawning( Mat frame );
 Point middlePoint(Point p1, Point p2);
 float blinkingRatio (vector<Point2f> landmarks, int points[]);
 float yawningRatio (vector<Point2f> landmarks, int points[]);
@@ -62,7 +62,7 @@ int main( int argc, const char** argv )
         };
 
         bool is_blinking = isBlinking( frame );
-        bool is_yawning = isYawning( frame);
+//      bool is_yawning = isYawning( frame);
 
         frame_counter++;
         if (is_blinking)
@@ -70,10 +70,10 @@ int main( int argc, const char** argv )
             blink_counter++;
         };
         
-        if (is_yawning)
-        {
-            cout << "Driver is yawning" << endl;
-        };
+//        if (is_yawning)
+//        {
+//            cout << "Driver is yawning" << endl;
+//        };
 
         if (frame_counter == 20)
         {
@@ -224,39 +224,39 @@ bool isBlinking( Mat frame )
     }
 }
     
-bool isYawning( Mat frame )
-    {
-        Mat frame_gray;
-        cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
-        equalizeHist( frame_gray, frame_gray );
-
-        std::vector<Rect> faces;
-        face_cascade.detectMultiScale( frame_gray, faces );
-
-        Mat faceROI = frame( faces[0] );
-
-        for ( size_t i = 0; i < faces.size(); i++ )
-        {
-            rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
-
-            Mat faceROI_gray = frame_gray( faces[i] );
-            faceROI = frame( faces[i] );
-        }
-
-        cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
-        vector<vector<Point2f> > shapes;
-
-        facemark -> fit(frame, faces, shapes);
-        
-        float yawning_ratio = yawningRatio( shapes[0], MOUTH );
-
-        if (yawning_ratio > 8)
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+//bool isYawning( Mat frame )
+//    {
+//        Mat frame_gray;
+//        cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
+//        equalizeHist( frame_gray, frame_gray );
+//
+//        std::vector<Rect> faces;
+//        face_cascade.detectMultiScale( frame_gray, faces );
+//
+//        Mat faceROI = frame( faces[0] );
+//
+//        for ( size_t i = 0; i < faces.size(); i++ )
+//        {
+//            rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
+//
+//            Mat faceROI_gray = frame_gray( faces[i] );
+//            faceROI = frame( faces[i] );
+//        }
+//
+//        cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
+//        vector<vector<Point2f> > shapes;
+//
+//        facemark -> fit(frame, faces, shapes);
+//
+//        float yawning_ratio = yawningRatio( shapes[0], MOUTH );
+//
+//        if (yawning_ratio > 8)
+//        {
+//            return 1;
+//        }
+//        else
+//        {
+//            return 0;
+//        }
     }
 
