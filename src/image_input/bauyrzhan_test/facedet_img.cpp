@@ -17,8 +17,8 @@ CascadeClassifier eyes_cascade;
 
 int main( int argc, const char** argv )
 {
-    String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
-    String eyes_cascade_name = samples::findFile("../haarcascades/haarcascade_righteye_2splits.xml");
+    String face_cascade_name = samples::findFile("../../haarcascades/haarcascade_frontalface_alt.xml" );
+    String eyes_cascade_name = samples::findFile("../../haarcascades/haarcascade_righteye_2splits.xml");
 
     if( !face_cascade.load( face_cascade_name ) )
     {
@@ -44,6 +44,20 @@ int main( int argc, const char** argv )
 
     waitKey(0);
     return 0;
+}
+
+float yawning (vector<Point2f> landmarks, int points[])
+{
+    Point top = landmarks[points[1]];
+    Point bottom = landmarks[points[2]];
+    float mouth_height = top.y - bottom.y;
+
+    try {
+        float mouth_height = top.y - bottom.y;
+    } catch (exception& e) {
+        mouth_height = 0.0;
+    }
+    return mouth_height;
 }
 
 void isolate( Mat frame, vector<Point2f> landmarks)
@@ -133,7 +147,7 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     }
 
-    String facemark_filename = "../models/lbfmodel.yaml";
+    String facemark_filename = "../../models/lbfmodel.yaml";
 
     Ptr<Facemark> facemark = createFacemarkLBF();
     facemark -> loadModel(facemark_filename);
@@ -153,7 +167,7 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     cout <<  shapes[0].size() << std::endl ;
 
-    isolate(frame, shapes[0]);
+    //isolate(frame, shapes[0]);
 
-    // imshow( "Capture - Face detection", frame );
+    imshow( "Capture - Face detection", frame );
 }
