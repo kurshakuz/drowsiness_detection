@@ -242,8 +242,12 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
-    if ( ! capture.isOpened() )
+    //VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
+    VideoCapture capture = VideoCapture(0);
+    Mat frames;
+    capture.read(frames);
+    
+    if ( ! capture.read(frames))
     {
         cout << "--(!)Error opening video capture\n";
         return -1;

@@ -24,7 +24,7 @@ Ptr<Facemark> facemark;
 
 int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
 int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
-int MOUTH[2] = {62, 66};
+//int MOUTH[2] = {62, 66};
 
 int main( int argc, const char** argv )
 {
@@ -42,7 +42,9 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../../sample_videos/driver_day.mp4");
+    //VideoCapture capture("../../sample_videos/driver_day.mp4");
+    VideoCapture capture = VideoCapture(0);
+    
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -124,19 +126,19 @@ float blinkingRatio (vector<Point2f> landmarks, int points[])
     return ratio;
 }
 
-float yawningRatio (vector<Point2f> landmarks, int points[])
-{
-    Point top = landmarks[points[1]];
-    Point bottom = landmarks[points[2]];
-    float mouth_height = top.y - bottom.y;
-
-    try {
-        float mouth_height = top.y - bottom.y;
-    } catch (exception& e) {
-        mouth_height = 0.0;
-    }
-    return mouth_height;
-}
+//float yawningRatio (vector<Point2f> landmarks, int points[])
+//{
+//    Point top = landmarks[points[1]];
+//    Point bottom = landmarks[points[2]];
+//    float mouth_height = top.y - bottom.y;
+//
+//    try {
+//        float mouth_height = top.y - bottom.y;
+//    } catch (exception& e) {
+//        mouth_height = 0.0;
+//    }
+//    return mouth_height;
+//}
 
 void isolate( Mat frame, vector<Point2f> landmarks, int points[])
 {
@@ -258,5 +260,4 @@ bool isBlinking( Mat frame )
 //        {
 //            return 0;
 //        }
-    }
-
+//    }
