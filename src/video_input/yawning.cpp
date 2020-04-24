@@ -100,9 +100,6 @@ bool isYawning( Mat frame )
     face_cascade.detectMultiScale( frame_gray, faces );
     int faces_size = faces.size();
 
-    // cout << faces_size << endl;
-    // cout << faces[0] << endl;
-
     if (faces_size > 0)
     {
         Mat faceROI = frame( faces[0] );
