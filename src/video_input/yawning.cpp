@@ -13,100 +13,23 @@ using namespace std;
 using namespace cv;
 using namespace cv::face;
 
-bool isYawning( Mat frame );
-Point middlePoint(Point p1, Point p2);
-float yawningRatio (vector<Point2f> landmarks, int points[]);
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Ptr<Facemark> facemark;
 
-// int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
-// int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
 int MOUTH_INNER[2] = {62, 66};
 int MOUTH_EDGE_POINTS[6] = {48, 50, 52, 54, 56, 58};
 
-
-int main( int argc, const char** argv )
+Point middlePoint(Point p1, Point p2) 
 {
-
-    String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
-
-    String facemark_filename = "../models/lbfmodel.yaml";
-    facemark = createFacemarkLBF();
-    facemark -> loadModel(facemark_filename);
-    cout << "Loaded facemark LBF model" << endl;
-
-    if( !face_cascade.load( face_cascade_name ) )
-    {
-        cout << "--(!)Error loading face cascade\n";
-        return -1;
-    };
-
-    VideoCapture capture("../sample_videos/china2.mp4");
-    if ( ! capture.isOpened() )
-    {
-        cout << "--(!)Error opening video capture\n";
-        return -1;
-    }
-
-    Mat frame;
-    int frame_counter = 0;
-    int yaw_counter = 0;
-
-    while ( capture.read(frame) )
-    {
-        if( frame.empty() )
-        {
-            cout << "--(!) No captured frame -- Break!\n";
-            break;
-        };
-
-        bool is_yawning = isYawning( frame );
-
-        if( waitKey(10) == 27 )
-        {
-            break; // escape
-        }
-    }
-    return 0;
-}
-
-Point middlePoint(Point p1, Point p2) {
     float x = (float)((p1.x + p2.x) / 2);
     float y = (float)((p1.y + p2.y) / 2);
     Point p = Point(x, y);
     return p;
 }
 
-float blinkingRatio (vector<Point2f> landmarks, int points[]) 
-{
-
-    Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
-    Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
-    Point top = middlePoint(landmarks[points[1]], landmarks[points[2]]);
-    Point bottom = middlePoint(landmarks[points[5]], landmarks[points[4]]);
-
-    float eye_width = hypot((left.x - right.x), (left.y - right.y));
-    float eye_height = hypot((top.x - bottom.x), (top.y - bottom.y));
-    float ratio = eye_width / eye_height;
-    
-    try {
-        float ratio = eye_width / eye_height;
-    } catch (exception& e) {
-        ratio = 0.0;
-    }
-
-    return ratio;
-}
-
 float yawningRatio (vector<Point2f> landmarks, int points[])
 {
-    // Point top = landmarks[points[1]];
-    // Point bottom = landmarks[points[2]];
-    // float mouth_height = top.y - bottom.y;
-
-    // return mouth_height;
-
     Point left = Point(landmarks[points[0]].x, landmarks[points[0]].y);
     Point right = Point(landmarks[points[3]].x, landmarks[points[3]].y);
     Point top = middlePoint(landmarks[points[1]], landmarks[points[2]]);
@@ -175,35 +98,90 @@ bool isYawning( Mat frame )
 
     std::vector<Rect> faces;
     face_cascade.detectMultiScale( frame_gray, faces );
+    int faces_size = faces.size();
 
-    Mat faceROI = frame( faces[0] );
+    // cout << faces_size << endl;
+    // cout << faces[0] << endl;
 
-    for ( size_t i = 0; i < faces.size(); i++ )
+    if (faces_size > 0)
     {
-        rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
+        Mat faceROI = frame( faces[0] );
 
-        Mat faceROI_gray = frame_gray( faces[i] );
-        faceROI = frame( faces[i] );
+        for ( size_t i = 0; i < faces.size(); i++ )
+        {
+            rectangle( frame,  Point(faces[i].x, faces[i].y), Size(faces[i].x + faces[i].width, faces[i].y + faces[i].height), Scalar(255,0,0), 2 );
+
+            Mat faceROI_gray = frame_gray( faces[i] );
+            faceROI = frame( faces[i] );
+        }
+
+        cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
+        vector<vector<Point2f> > shapes;
+
+        if (facemark -> fit(frame, faces, shapes)) {
+            isolate_mouth(frame, shapes[0], MOUTH_EDGE_POINTS);
+            float yawning_ratio = yawningRatio( shapes[0], MOUTH_EDGE_POINTS );
+            cout << "Yawning ratio: " << yawning_ratio << endl;
+
+            if (yawning_ratio > 5) 
+            {
+                cout << "YAWNING!" << endl;
+                return 1;
+            }
+            else 
+            {
+                cout << "not yawning" << endl;
+                return 0;
+            } 
+        } else {
+
+        }
     }
-
-    cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
-    vector<vector<Point2f> > shapes;
-
-    facemark -> fit(frame, faces, shapes);
-
-    isolate_mouth(frame, shapes[0], MOUTH_EDGE_POINTS);
-
-    float yawning_ratio = yawningRatio( shapes[0], MOUTH_EDGE_POINTS );
-    cout << "Yawning ratio: " << yawning_ratio << endl;
-
-    if (yawning_ratio > 5) 
-    {
-        cout << "YAWNING!" << endl;
-        return 1;
-    }
-    else 
-    {
-        cout << "not yawning" << endl;
-        return 0;
-    } 
+    
 }
+
+int main( int argc, const char** argv )
+{
+
+    String face_cascade_name = samples::findFile("../haarcascades/haarcascade_frontalface_alt.xml" );
+    String facemark_filename = "../models/lbfmodel.yaml";
+
+    facemark = createFacemarkLBF();
+    facemark -> loadModel(facemark_filename);
+    cout << "Loaded facemark LBF model" << endl;
+
+    if( !face_cascade.load( face_cascade_name ) )
+    {
+        cout << "--(!)Error loading face cascade\n";
+        return -1;
+    };
+
+    VideoCapture capture("../sample_videos/driver_day.mp4");
+    if ( ! capture.isOpened() )
+    {
+        cout << "--(!)Error opening video capture\n";
+        return -1;
+    }
+
+    Mat frame;
+    int frame_counter = 0;
+    int yaw_counter = 0;
+
+    while ( capture.read(frame) )
+    {
+        if( frame.empty() )
+        {
+            cout << "--(!) No captured frame -- Break!\n";
+            break;
+        };
+
+        bool is_yawning = isYawning( frame );
+
+        if( waitKey(10) == 27 )
+        {
+            break; // escape
+        }
+    }
+    return 0;
+}
+
