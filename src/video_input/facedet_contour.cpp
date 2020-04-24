@@ -226,6 +226,23 @@ void detectFaceEyesAndDisplay( Mat frame )
     // cout << "Right: " << (blinking_ratio_right) << endl;    
 }
 
+int GetDevID()
+{
+    int MaxTested = 254;
+    int DevID = -2;
+    for (int i = -1; i < MaxTested; i++)
+    {
+        cv::VideoCapture TestDev(i);
+        bool IsDevOpen = TestDev.isOpened();
+        TestDev.release();
+        if (IsDevOpen)
+        {
+            DevID = i;
+            break;
+        }
+    }
+    return DevID;
+}
 
 int main( int argc, const char** argv )
 {
@@ -242,8 +259,19 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    //VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
-    VideoCapture capture = VideoCapture(0);
+    VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
+
+    // int id = GetDevID();
+    // cout << "ID: " << (id) << endl;  
+
+    // VideoCapture capture = VideoCapture(id);
+
+    // if (!capture.isOpened())
+    // {
+    //     cout << "The camera could not be opened.\n";
+    //     return -1;
+    // }
+
     Mat frames;
     capture.read(frames);
     
