@@ -6,6 +6,7 @@
 #include <opencv2/core/mat.hpp>
 #include <stdio.h>
 #include <math.h>
+#include <tuple>
 
 #include <iostream>
 
@@ -21,6 +22,11 @@ int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
 int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
 int MOUTH_INNER[2] = {62, 66};
 int MOUTH_EDGE_POINTS[6] = {48, 50, 52, 54, 56, 58};
+
+struct StateOutput {       
+    bool state;
+    Mat frame;
+};
 
 Point middlePoint(Point p1, Point p2) 
 {
@@ -71,7 +77,7 @@ float yawningRatio (vector<Point2f> landmarks, int points[])
     return ratio;
 }
 
-void isolate( Mat frame, vector<Point2f> landmarks, int points[], String part)
+Mat isolate( Mat frame, vector<Point2f> landmarks, int points[], String part)
 {
     Point region[1][20];
 
@@ -110,10 +116,12 @@ void isolate( Mat frame, vector<Point2f> landmarks, int points[], String part)
     int new_width = new_size.width;
     int center[] = {new_width / 2, new_height / 2};
 
-    imshow(part, frame_region_resized);
+    // imshow(part, frame_region_resized);
+
+    return frame_region_resized;
 }
 
-bool isBlinking( Mat frame )
+StateOutput isBlinking( Mat frame )
 {
     Mat frame_gray;
     cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
@@ -140,7 +148,7 @@ bool isBlinking( Mat frame )
         vector<vector<Point2f> > shapes;
 
         if (facemark -> fit(frame, faces, shapes)) {
-            isolate(frame, shapes[0], LEFT_EYE_POINTS, "eye");
+            Mat resized_frame = isolate(frame, shapes[0], LEFT_EYE_POINTS, "eye");
             // isolate(frame, shapes[0], RIGHT_EYE_POINTS );
             float blinking_ratio_left = blinkingRatio( shapes[0], LEFT_EYE_POINTS );
             float blinking_ratio_right = blinkingRatio( shapes[0], RIGHT_EYE_POINTS );
@@ -150,20 +158,20 @@ bool isBlinking( Mat frame )
 
             if (avg_blinking_ratio > 3.8) 
             {
-                cout << "BLINKING!" << endl;
-                return 1;
+                // cout << "BLINKING!" << endl;
+                return StateOutput {1, resized_frame};
             }
             else 
             {
-                cout << "not blinking" << endl;
-                return 0;
+                // cout << "not blinking" << endl;
+                return StateOutput {0, resized_frame};
             } 
         }
     }
 }
 
 
-bool isYawning( Mat frame )
+StateOutput isYawning( Mat frame )
 {
     Mat frame_gray;
     cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
@@ -189,19 +197,19 @@ bool isYawning( Mat frame )
         vector<vector<Point2f> > shapes;
 
         if (facemark -> fit(frame, faces, shapes)) {
-            isolate(frame, shapes[0], MOUTH_EDGE_POINTS, "mouth");
+            Mat resized_frame = isolate(frame, shapes[0], MOUTH_EDGE_POINTS, "mouth");
             float yawning_ratio = yawningRatio( shapes[0], MOUTH_EDGE_POINTS );
             // cout << "Yawning ratio: " << yawning_ratio << endl;
 
             if (yawning_ratio < 1.7) 
             {
-                cout << "YAWNING!" << endl;
-                return 1;
+                // cout << "YAWNING!" << endl;
+                return StateOutput {1, resized_frame};
             }
             else 
             {
-                cout << "not yawning" << endl;
-                return 0;
+                // cout << "not yawning" << endl;
+                return StateOutput {0, resized_frame};
             } 
         } else {
 
@@ -226,7 +234,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../sample_videos/yawning.mp4");
+    VideoCapture capture("../sample_videos/sleepy.mp4");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -246,8 +254,35 @@ int main( int argc, const char** argv )
             break;
         };
 
-        bool is_blinking = isBlinking( frame );
-        bool is_yawning = isYawning( frame );
+        StateOutput blink = isBlinking( frame );
+        StateOutput yaw = isYawning( frame );
+        bool is_blinking = blink.state;
+        bool is_yawning = yaw.state;
+        // Mat eye_frame = blink.frame;
+        // Mat mouth_frame = yaw.frame;
+
+        if( blink.frame.empty() || yaw.frame.empty() )
+        {
+            cout << "--(!) No captured eye or mouth frame -- Break!\n";
+            break;
+        };
+
+        // Driver state window visualization
+        Mat eye_frame;
+        Mat mouth_frame;
+
+        resize(blink.frame, eye_frame, Size(100, 100), 0, 0, INTER_CUBIC);
+        resize(yaw.frame, mouth_frame, Size(100, 100), 0, 0, INTER_CUBIC);
+
+        Mat canvas(frame.rows+130, frame.cols+20, CV_8UC3, Scalar(0, 0, 0));
+        Rect r(10, 10, frame.cols, frame.rows);
+        frame.copyTo(canvas(r));
+
+        Rect show_eye(10, frame.rows + 20, 100, 100);
+        Rect show_mouth(120, frame.rows + 20, 100, 100);
+
+        eye_frame.copyTo(canvas(show_eye));
+        mouth_frame.copyTo(canvas(show_mouth));
 
         frame_counter++;
         if (is_blinking)
@@ -260,23 +295,42 @@ int main( int argc, const char** argv )
             yaw_counter++;
         }
 
+        float drowsiness_perc;
+        float yaw_perc;
         if (frame_counter == 20) 
         {
-            float drowsiness_perc = (float)blink_counter / frame_counter;
-            float yaw_perc = (float)yaw_counter / frame_counter;
+            drowsiness_perc = (float)blink_counter / frame_counter;
+            yaw_perc = (float)yaw_counter / frame_counter;
             frame_counter = 0;
             blink_counter = 0;
             yaw_counter = 0;
             // cout << "Drowsiness percentage: " << (drowsiness_perc) << endl; 
             // cout << "Yawing percentage: " << (yaw_perc) << endl;    
-            
-            if (drowsiness_perc > 0.8) 
-            {
-                cout << "ALERT! The driver is sleepy!" << endl;    
-            }
         }
 
-        imshow("Face", frame);
+        if (!drowsiness_perc)
+        {
+            drowsiness_perc = 0.0;
+            yaw_perc = 0.0;
+        }
+
+        putText(canvas, "Drowsiness percentage: " + to_string(drowsiness_perc), Point2f(20, 40), FONT_HERSHEY_DUPLEX, 0.9, Scalar(0, 200, 200), 1);
+        putText(canvas, "Yawing percentage: " + to_string(yaw_perc), Point2f(20, 75), FONT_HERSHEY_DUPLEX, 0.9, Scalar(0, 200, 200), 1);
+            
+        if (drowsiness_perc > 0.8) 
+        {
+            cout << "ALERT! The driver is sleepy!" << endl;   
+            putText(canvas, "ALERT! The driver is sleepy!", Point2f(canvas.cols - 400, canvas.rows - 50), FONT_HERSHEY_DUPLEX, 0.9, Scalar(30, 30, 147), 1);  
+        }
+        else 
+        {
+            putText(canvas, "The driver state is OK", Point2f(canvas.cols - 400, canvas.rows - 50), FONT_HERSHEY_DUPLEX, 0.9, Scalar(30, 147, 31), 1);  
+        }
+        
+        
+        imshow("Driver State", canvas);
+
+        // imshow("Face", frame);
 
         if( waitKey(10) == 27 )
         {
