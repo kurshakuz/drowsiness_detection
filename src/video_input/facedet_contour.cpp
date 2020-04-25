@@ -66,6 +66,51 @@ float iris_size(Mat frame)
     return (n_blacks / n_pixels);
 }
 
+Mat iris_correction( Mat frame_eye) {
+    int leftmost = 0;
+    int rightmost = frame_eye.cols;
+    int top = 0;
+    int bottom = frame_eye.rows;
+
+    int hdist;
+    int vdist;
+    double hv_ratio;
+
+    for (int y = 0; y < frame_eye.rows; y++ ) {
+        for (int x = 0; x < frame_eye.cols; x++) {
+            if (frame_eye.at<uchar>(cv::Point2i(x,y)) == 0) {
+                if (x < leftmost) {
+                    leftmost = x;
+                }
+                if (y < top) {
+                    top = y;
+                }
+                if (x > rightmost) {
+                    rightmost = x;
+                }
+                if (y > bottom) {
+                    bottom = y;
+                }
+            }
+        }
+    }
+
+    hdist = rightmost - leftmost;
+    vdist = bottom - top;
+    hv_ratio = (double)hdist / (double)vdist;
+
+    Mat frame_eye_new;
+    if (hv_ratio > 2.3) {
+        frame_eye_new = cv::Mat(frame_eye.rows, frame_eye.cols, CV_8UC1, Scalar::all(255));
+        cv::threshold(frame_eye_new, frame_eye_new, 240, 255.0, THRESH_BINARY);
+    } else {
+        frame_eye_new = frame_eye;
+    }
+
+    // cout <<  hv_ratio << std::endl ; // for testing
+    return frame_eye_new;
+}
+
 // Morphological operations used for iris extraction
 Mat eye_processing(Mat frame_eye_resized, float threshold)
 {
@@ -81,14 +126,17 @@ Mat eye_processing(Mat frame_eye_resized, float threshold)
     cvtColor( frame_eye_contours, frame_eye_binary, COLOR_BGR2GRAY );
     cv::threshold(frame_eye_binary, frame_eye_binary, threshold, 255.0, THRESH_BINARY);
 
-    Mat kernel(3,3, CV_8UC1, Scalar::all(255));
+    Mat kernel(5,5, CV_8UC1, Scalar::all(255));
     Mat frame_eye_dilated;
     cv::dilate(frame_eye_binary, frame_eye_dilated, kernel);
 
     Mat frame_eye_closing;
     cv::erode(frame_eye_dilated, frame_eye_closing, kernel);
 
-    return frame_eye_closing;
+    Mat frame_eye_polished;
+    frame_eye_polished = iris_correction(frame_eye_closing);
+
+    return frame_eye_polished;
 }
 
 // calibration of threshold values used in binarization
@@ -205,9 +253,22 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     Mat eye_frame = isolate(frame, shapes[0], LEFT_EYE_POINTS );
     float threshold = find_best_threshold(eye_frame);
-    cout << threshold<< std::endl;
+    // cout << threshold<< std::endl;
 
+    Mat eye_frame_processed = eye_processing(eye_frame, threshold);
+
+    imshow("Eye original", eye_frame);
+    imshow("Eye binary", eye_frame_processed);
+
+    if (iris_size(eye_frame_processed) < 0.3) {
+        cout << "BLINKING" << std::endl;
+    } else {
+        cout << "normal" << std::endl;
+    }
+    
+    
     // isolate(frame, shapes[0], RIGHT_EYE_POINTS );
+
     // float blinking_ratio_left = blinkingRatio( shapes[0], LEFT_EYE_POINTS );
     // float blinking_ratio_right = blinkingRatio( shapes[0], RIGHT_EYE_POINTS );
 
