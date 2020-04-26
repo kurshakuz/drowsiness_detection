@@ -20,6 +20,12 @@ Ptr<Facemark> facemark;
 int LEFT_EYE_POINTS[6] = {36, 37, 38, 39, 40, 41};
 int RIGHT_EYE_POINTS[6] = {42, 43, 44, 45, 46, 47};
 
+struct EyeFrameOutput {  
+    bool state;     
+    Mat eye_frame;
+    Mat eye_frame_processed;
+};
+
 Point middlePoint(Point p1, Point p2) 
 {
     float x = (float)((p1.x + p2.x) / 2);
@@ -209,7 +215,7 @@ Mat isolate( Mat frame, vector<Point2f> landmarks, int points[])
 }
 
 // detects eyes and displays
-void detectFaceEyesAndDisplay( Mat frame )
+EyeFrameOutput detectFaceEyesAndDisplay( Mat frame )
 {
     Mat frame_gray;
     cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
@@ -245,13 +251,15 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     Mat eye_frame_processed = eye_processing(eye_frame, threshold);
 
-    imshow("Eye original", eye_frame);
-    imshow("Eye binary", eye_frame_processed);
+    // imshow("Eye original", eye_frame);
+    // imshow("Eye binary", eye_frame_processed);
 
-    if (iris_size(eye_frame_processed) < 0.3) {
-        cout << "BLINKING" << std::endl;
+    if (iris_size(eye_frame_processed) < 0.1) {
+        return EyeFrameOutput {1, eye_frame, eye_frame_processed};
+        // cout << "BLINKING" << std::endl;
     } else {
-        cout << "normal" << std::endl;
+        // cout << "normal" << std::endl;
+        return EyeFrameOutput {0, eye_frame, eye_frame_processed};
     }
     
     
@@ -290,7 +298,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../sample_videos/china2.mp4"); // merey.mp4 or bauka.mp4
+    VideoCapture capture("../sample_videos/CROPPED.MOV"); // merey.mp4 or bauka.mp4 or china2.mp4
 
     // int id = GetDevID();
     // cout << "ID: " << (id) << endl;  
@@ -313,6 +321,8 @@ int main( int argc, const char** argv )
     }
 
     Mat frame;
+    int frame_counter = 0;
+    int blink_counter = 0;
     while ( capture.read(frame) )
     {
         if( frame.empty() )
@@ -321,7 +331,65 @@ int main( int argc, const char** argv )
             break;
         }
 
-        detectFaceEyesAndDisplay( frame ); // main logic execution
+        EyeFrameOutput results = detectFaceEyesAndDisplay( frame ); // main logic execution
+        bool is_blinking = results.state;
+
+        Mat eye_frame;
+        Mat eye_frame_processed_bin;
+        Mat eye_frame_processed;
+
+        resize(frame, frame, Size(640, 360), 0, 0, INTER_CUBIC);
+
+        resize(results.eye_frame, eye_frame, Size(100, 100), 0, 0, INTER_CUBIC);
+        resize(results.eye_frame_processed, eye_frame_processed_bin, Size(100, 100), 0, 0, INTER_CUBIC);
+        cvtColor(eye_frame_processed_bin, eye_frame_processed, COLOR_GRAY2RGB);
+
+        Mat canvas(frame.rows+130, frame.cols+20, CV_8UC3, Scalar(0, 0, 0));
+        Rect r(10, 10, frame.cols, frame.rows);
+        frame.copyTo(canvas(r));
+
+        Rect show_eye(10, frame.rows + 20, 100, 100);
+        Rect show_eye_proc(120, frame.rows + 20, 100, 100);
+
+        eye_frame.copyTo(canvas(show_eye));
+        eye_frame_processed.copyTo(canvas(show_eye_proc));
+
+        frame_counter++;
+        if (is_blinking)
+        {
+            blink_counter++;
+        };
+
+        float drowsiness_perc;
+        if (frame_counter == 20) 
+        {
+            drowsiness_perc = (float)blink_counter / frame_counter;
+            frame_counter = 0;
+            blink_counter = 0;
+            // cout << "Drowsiness percentage: " << (drowsiness_perc) << endl; 
+            // cout << "Yawing percentage: " << (yaw_perc) << endl;    
+        }
+
+        if (!drowsiness_perc)
+        {
+            drowsiness_perc = 0.0;
+        }
+
+        putText(canvas, "Drowsiness percentage: " + to_string(drowsiness_perc), Point2f(20, 40), FONT_HERSHEY_DUPLEX, 0.9, Scalar(0, 200, 200), 1);
+            
+        if (drowsiness_perc > 0.8) 
+        {
+            // cout << "ALERT! The driver is sleepy!" << endl;   
+            putText(canvas, "ALERT! The driver is sleepy!", Point2f(canvas.cols - 400, canvas.rows - 50), FONT_HERSHEY_DUPLEX, 0.9, Scalar(30, 30, 147), 1);  
+        }
+        else 
+        {
+            putText(canvas, "The driver state is OK", Point2f(canvas.cols - 400, canvas.rows - 50), FONT_HERSHEY_DUPLEX, 0.9, Scalar(30, 147, 31), 1);  
+        }
+        
+        
+        imshow("Driver State", canvas);
+        
 
         if( waitKey(10) == 27 )
         {

@@ -234,7 +234,7 @@ int main( int argc, const char** argv )
         return -1;
     };
 
-    VideoCapture capture("../sample_videos/sleepy.mp4");
+    VideoCapture capture("../sample_videos/CROPPED.MOV");
     if ( ! capture.isOpened() )
     {
         cout << "--(!)Error opening video capture\n";
@@ -319,7 +319,7 @@ int main( int argc, const char** argv )
             
         if (drowsiness_perc > 0.8) 
         {
-            cout << "ALERT! The driver is sleepy!" << endl;   
+            // cout << "ALERT! The driver is sleepy!" << endl;   
             putText(canvas, "ALERT! The driver is sleepy!", Point2f(canvas.cols - 400, canvas.rows - 50), FONT_HERSHEY_DUPLEX, 0.9, Scalar(30, 30, 147), 1);  
         }
         else 
