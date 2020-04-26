@@ -227,18 +227,6 @@ void detectFaceEyesAndDisplay( Mat frame )
         Mat faceROI_gray = frame_gray( faces[i] );
         faceROI = frame( faces[i] );
 
-        // Show eye
-        // std::vector<Rect> eyes;
-        // eyes_cascade.detectMultiScale( faceROI_gray, eyes );
-        // for ( size_t j = 0; j < eyes.size(); j++ )
-        // {
-        //     rectangle( faceROI, Point(eyes[j].x, eyes[j].y), Size(eyes[j].x + eyes[j].width, eyes[j].y + eyes[j].height), Scalar(0, 255, 0), 2);
-        //     eye = faceROI(eyes[0]);
-        //     cout <<  "Detected an eye" << std::endl ;
-        // }
-
-        // faceROI
-
     }
 
     cv::rectangle(frame, faces[0], Scalar(255, 0, 0), 2);
@@ -285,24 +273,6 @@ void detectFaceEyesAndDisplay( Mat frame )
 
     // cout << "Left: " << (blinking_ratio_left) << endl;    
     // cout << "Right: " << (blinking_ratio_right) << endl;    
-}
-
-int GetDevID()
-{
-    int MaxTested = 254;
-    int DevID = -2;
-    for (int i = -1; i < MaxTested; i++)
-    {
-        cv::VideoCapture TestDev(i);
-        bool IsDevOpen = TestDev.isOpened();
-        TestDev.release();
-        if (IsDevOpen)
-        {
-            DevID = i;
-            break;
-        }
-    }
-    return DevID;
 }
 
 int main( int argc, const char** argv )
